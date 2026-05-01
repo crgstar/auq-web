@@ -1083,19 +1083,31 @@
     });
     return out;
   }
+  // POST /answer 後、サーバは stdout に JSON を吐いてから exit するため、
+  // fetch の resolve 後すぐに接続が切れる。closing-screen は出したまま放置し、
+  // ユーザは「閉じていい」表示を見て手動でタブを閉じる。
+  function postAnswer(payload) {
+    // keepalive: サーバはレスポンス後すぐに graceful shutdown するため、
+    // ページ unload や接続早期切断でも POST 本体が確実に届くよう保険をかける
+    return fetch('/answer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    }).catch(err => {
+      console.error('POST /answer failed:', err);
+    });
+  }
   function doSubmit() {
     const payload = buildPayload();
     document.getElementById('closingScreen').classList.add('show');
-    setTimeout(() => {
-      // 実装時はここで POST /answer。mockup は alert で確認。
-      alert('送信される JSON (mockup):\n\n' + JSON.stringify(payload, null, 2));
-      document.getElementById('closingScreen').classList.remove('show');
-    }, 400);
+    postAnswer(payload);
   }
   function doReject() {
     if (!confirm('reject しますか？ 回答せずに閉じます。')) return;
-    const payload = { event: 'reject', timedOut: false };
-    alert('送信される JSON (mockup):\n\n' + JSON.stringify(payload, null, 2));
+    const payload = { event: 'reject', timedOut: false, elapsedSec: TOTAL_SEC - remain };
+    document.getElementById('closingScreen').classList.add('show');
+    postAnswer(payload);
   }
   submitBt.addEventListener('click', doSubmit);
   rejectBt.addEventListener('click', doReject);
