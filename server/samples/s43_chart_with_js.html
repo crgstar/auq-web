@@ -1,0 +1,29 @@
+<script type="application/auq+json">
+{ "$auq": "meta", "repo": "auq-web" }
+</script>
+
+<script type="application/auq+json">
+{
+  "id": "q1",
+  "title": "Chart 確認",
+  "kind": "single",
+  "options": [
+    { "value": "ok", "label": "OK" },
+    { "value": "ng", "label": "NG" }
+  ]
+}
+</script>
+
+<p>下のグラフを見てから選んでください。</p>
+
+<svg id="chart" width="400" height="160"></svg>
+
+<script type="application/json" id="chart-data">
+{ "labels": ["A","B","C"], "values": [10, 20, 15] }
+</script>
+
+<script>
+  // application/auq+json 以外なので desc にそのまま流れる
+  const d = JSON.parse(document.getElementById('chart-data').textContent);
+  drawChart('chart', d);
+</script>

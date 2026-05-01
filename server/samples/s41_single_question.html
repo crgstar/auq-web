@@ -1,0 +1,28 @@
+<script type="application/auq+json">
+{ "$auq": "meta", "repo": "auq-web", "timeoutSec": 300 }
+</script>
+
+<script type="application/auq+json">
+{
+  "id": "q1",
+  "title": "ライブラリを Python で固める方針で OK ?",
+  "kind": "single",
+  "options": [
+    { "value": "python", "label": "Python で固める", "hint": "依存ゼロ・macOS 標準" },
+    { "value": "bun",    "label": "Bun で書く",    "hint": "brew install bun が前提" }
+  ],
+  "allowOther": true
+}
+</script>
+
+<p>auq-web の起動部分は <strong>「呼び出し側に何もインストールさせない」</strong>
+のが理想です。Skill が <code>/auq</code> で呼ばれた瞬間に、ユーザーの環境で
+確実に動かす必要があります。</p>
+
+<table>
+  <tr><th>言語</th><th>事前準備</th><th>1-shot 行数</th></tr>
+  <tr><td>Python で固める</td><td>不要 (macOS 標準)</td><td>~50</td></tr>
+  <tr><td>Bun で書く</td><td>brew install bun</td><td>~20</td></tr>
+</table>
+
+<p>判断基準は <em>「Skill は気軽に呼べる」</em> を優先するなら ...</p>

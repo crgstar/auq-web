@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
-"""auq-web minimal server (mock).
+"""auq-web one-shot server.
 
-GET  /          -> server/index.html
+GET  /          -> rendered index.html (parser → wire の結果を埋め込んだ HTML)
 POST /answer    -> body JSON to stdout, 200 OK, then graceful shutdown
 others          -> 404
 
 Why one-shot: the answer JSON on stdout is the contract between server and
 caller (Skill via Monitor). One process, one answer; no long-running state.
+
+入力経路 (§5.1):
+  - stdin から HTML fragment を受け取る (デフォルト)
+  - --input <path> で path を読む (debug 時)
+  - 両方指定された場合は --input を優先
 """
 import argparse
 import errno
@@ -17,6 +22,9 @@ import sys
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
+from parser import InvalidInput, parse_input
+from wire import render_template
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 INDEX_PATH = os.path.join(HERE, "index.html")
 DEFAULT_PORT = 7777
@@ -24,12 +32,13 @@ SHUTDOWN_POLL_SEC = 0.05  # serve_forever が shutdown フラグを観測する�
 
 
 class Handler(BaseHTTPRequestHandler):
+    rendered_html: bytes = b""  # main() が起動前に書き込む
+
     def do_GET(self):  # noqa: N802 (BaseHTTPRequestHandler convention)
         if self.path not in ("/", "/index.html"):
             self.send_error(404, "Not Found")
             return
-        with open(INDEX_PATH, "rb") as f:
-            content = f.read()
+        content = self.rendered_html
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(content)))
@@ -97,11 +106,44 @@ def report_port_conflict(port: int) -> None:
     print("\n".join(msg), file=sys.stderr)
 
 
+def _read_input(input_path: str | None) -> str:
+    """§5.1: --input が指定されていればそちらを, なければ stdin を読む"""
+    if input_path:
+        with open(input_path, encoding="utf-8") as f:
+            return f.read()
+    return sys.stdin.read()
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="auq-web minimal mock server")
-    parser.add_argument("--port", type=int, default=DEFAULT_PORT)
-    parser.add_argument("--host", default="127.0.0.1")
-    args = parser.parse_args()
+    arg_parser = argparse.ArgumentParser(description="auq-web one-shot server")
+    arg_parser.add_argument("--port", type=int, default=DEFAULT_PORT)
+    arg_parser.add_argument("--host", default="127.0.0.1")
+    arg_parser.add_argument(
+        "--input",
+        help="HTML fragment ファイルパス. 省略時は stdin (§5.1)",
+    )
+    args = arg_parser.parse_args()
+
+    try:
+        source = _read_input(args.input)
+    except OSError as e:
+        print(f"❌ 入力読込み失敗: {e}", file=sys.stderr)
+        return 1
+
+    try:
+        payload = parse_input(source)
+    except InvalidInput as e:
+        # §5.3: バリデーション失敗は 400 相当として stderr に出して exit 1
+        print(f"❌ 入力 HTML のバリデーション失敗: {e}", file=sys.stderr)
+        return 1
+
+    try:
+        with open(INDEX_PATH, encoding="utf-8") as f:
+            template = f.read()
+        Handler.rendered_html = render_template(template, payload).encode("utf-8")
+    except (OSError, ValueError) as e:
+        print(f"❌ テンプレ render 失敗: {e}", file=sys.stderr)
+        return 1
 
     try:
         server = HTTPServer((args.host, args.port), Handler)
