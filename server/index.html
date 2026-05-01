@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>auq-web — Claude が開く質問画面</title>
+<script id="auq-questions" type="application/json">__AUQ_DATA__</script>
 <style>
   :root {
     --bg:        #0d1117;
@@ -529,6 +530,10 @@
     .wrap { padding-bottom: 130px; }
   }
 
+  /* 1 質問のみの時: chip strip を出す価値が無いので畳む.
+     header-strip 自体は repo / missing 表示のために残す */
+  .header-strip.single-q .chips { display: none; }
+
   /* closing screen (after submit)
      実装時: POST /answer 完了後、サーバが exit するまでこの画面を残す。
              ユーザは「閉じていい」サインを見て手動でタブを閉じる想定。 */
@@ -568,298 +573,21 @@
 <div class="wrap">
 
   <header class="header-strip" role="banner">
-    <nav class="chips" id="chips" aria-label="質問ナビ">
-      <button class="chip active" type="button" data-step="0" data-state="pending" aria-label="Q1 へ">Q1<span class="state" aria-hidden="true"></span></button>
-      <button class="chip"        type="button" data-step="1" data-state="pending" aria-label="Q2 へ">Q2<span class="state" aria-hidden="true"></span></button>
-      <button class="chip"        type="button" data-step="2" data-state="pending" aria-label="Q3 へ">Q3<span class="state" aria-hidden="true"></span></button>
-      <button class="chip"        type="button" data-step="3" data-state="pending" aria-label="Q4 へ">Q4<span class="state" aria-hidden="true"></span></button>
-      <button class="chip"        type="button" data-step="4" data-state="pending" aria-label="Q5 へ">Q5<span class="state" aria-hidden="true"></span></button>
-    </nav>
+    <nav class="chips" id="chips" aria-label="質問ナビ"></nav>
     <div class="header-meta">
-      <span class="repo">kcinfra-kcprd</span>
+      <span class="repo" id="repo"></span>
       <span class="missing-sep">·</span>
       <span class="missing-count zero" id="missingCount">0</span> missing
     </div>
   </header>
 
-  <main class="stage" id="stage">
-
-    <!-- ───── Q1 single ───── -->
-    <section class="step active" data-step="0" data-kind="single" data-q="q1">
-      <header class="step-head">
-        <span class="step-num">Q1 / 5</span>
-        <h2>ライブラリを Python で固める方針で OK ?</h2>
-        <span class="kind-tag">single</span>
-      </header>
-      <div class="desc">
-        <p>auq-web の起動部分は <strong>「呼び出し側に何もインストールさせない」</strong> のが理想です。Skill が <code>/auq</code> で呼ばれた瞬間に、ユーザーの環境で確実に動かす必要があり、事前準備が要る言語を選ぶと初回利用で「あれ、動かない」と詰まる人が出て、Skill の "気軽に呼べる" 性質を失います。</p>
-        <p>macOS には Python 3 が pre-installed されています。<code>brew install</code> も <code>npm install</code> も要らず、<code>http.server</code>・<code>argparse</code>・<code>json</code> がすべて標準ライブラリにあります。1 ファイルで HTTP サーバ + JSON 入出力 + 引数パーサを完結できる、数少ない言語の一つです。</p>
-        <p>Bun は速度面で魅力的で、Web API が網羅されているので 20 行程度で書けます。ただし <code>brew install bun</code> が前提になり、Skill を <em>誰かに配る</em> 想定ではハードルが上がります。Node は標準では何もないので追加 npm が必要、しかも Mac には pre-installed されていません。</p>
-        <table>
-          <tr><th>言語</th><th>事前準備</th><th>1-shot 行数目安</th><th>標準ライブラリ範囲</th></tr>
-          <tr><td>Python</td><td>不要 (macOS 標準)</td><td>~50</td><td>HTTP, JSON, argparse 揃う</td></tr>
-          <tr><td>Bun</td><td>brew install bun</td><td>~20</td><td>Web API 網羅</td></tr>
-          <tr><td>Node</td><td>場合により要</td><td>~70</td><td>http モジュールのみ。npm 必要な機能多め</td></tr>
-        </table>
-        <p>「Skill は気軽に呼べる」「初回ユーザに事前準備を強いない」を最優先するなら、<strong>Python が最も安全</strong>な選択。書く行数が多くても、それは一度書けば済む話。<em>呼ばれる側のコスト</em> ではなく <em>書く側のコスト</em> です。</p>
-        <p>ただし Mac 以外の環境 (CI / Linux 開発機 / Codespaces) で動かしたいなら状況が変わります。Linux も Python 3 が標準で入っている事が多いですが、最近は <code>python3</code> が入っていないディストリも稀にあります。汎用性で見ても Python に分。</p>
-      </div>
-      <div class="answer">
-        <ul class="options">
-          <li><label class="opt"><input type="radio" name="q1" value="python">
-            <span><span class="lbl">Python で固める</span><span class="desc-line">依存ゼロ・macOS 標準</span></span></label></li>
-          <li><label class="opt"><input type="radio" name="q1" value="bun">
-            <span><span class="lbl">Bun で書く</span><span class="desc-line">brew install bun が前提</span></span></label></li>
-          <li><label class="opt"><input type="radio" name="q1" value="node">
-            <span><span class="lbl">Node で書く</span><span class="desc-line">速度より馴染み優先</span></span></label></li>
-          <li><label class="opt other-row"><input type="radio" name="q1" value="__other__">
-            <span>
-              <span class="lbl">Other…</span>
-              <input type="text" class="other-text" data-q="q1" placeholder="自由入力 (例: Deno, Rust, …)">
-            </span></label></li>
-        </ul>
-      </div>
-      <div class="step-foot">
-        <details class="comment">
-          <summary>comment</summary>
-          <textarea name="q1_comment" id="q1_comment" placeholder="補足や条件付き選択など"></textarea>
-        </details>
-        <div class="step-nav">
-          <button type="button" class="prev" disabled>← prev</button>
-          <button type="button" class="next">next →</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- ───── Q2 multi ───── -->
-    <section class="step" data-step="1" data-kind="multi" data-q="q2">
-      <header class="step-head">
-        <span class="step-num">Q2 / 5</span>
-        <h2>MVP に入れる機能を選んで（複数可）</h2>
-        <span class="kind-tag">multi</span>
-      </header>
-      <div class="desc">
-        <p>MVP に何を入れるかで、初回リリース後の <strong>方向性</strong> が決まります。多すぎると複雑化して保守が重く、少なすぎると "使えない" と判断されて誰も呼ばなくなる。最低限「呼んで意味がある」状態の境界線を引きたい所です。</p>
-        <p>このスキルの真価は <em>Claude が自由に表現された質問を投げられる事</em>。これは骨格として常に提供されます。一方で AskUserQuestion 互換 (1 ページに最大 4 問)・<code>multiSelect</code>・タイムアウト・<code>port-conflict</code> 画面は、それぞれ独立した拡張で、入れるかは判断要です。</p>
-        <p>特に <code>port-conflict</code> 画面は実装時の落とし穴になりやすく、「7777 既に埋まってる時に何が起きるか分からない」を最初から潰しておく価値はあります。逆に <code>multiSelect</code> や複数質問は AskUserQuestion 互換性のためで、互換を諦めるなら後回しにできます。</p>
-        <p>判断基準: <strong>「ない時に困るのは誰か」</strong>。エラー画面は誰でも困る。multiSelect が無いと困るのは "互換性が必要な呼び出し側"。それぞれの "困る側" の優先度で線引きしてください。</p>
-      </div>
-      <div class="answer">
-        <ul class="options">
-          <li><label class="opt"><input type="checkbox" name="q2" value="multi-question">
-            <span><span class="lbl">1 ページに複数質問</span><span class="desc-line">AskUserQuestion 互換 (max 4)</span></span></label></li>
-          <li><label class="opt"><input type="checkbox" name="q2" value="multi-select">
-            <span><span class="lbl">multiSelect 対応</span><span class="desc-line">checkbox 形式</span></span></label></li>
-          <li><label class="opt"><input type="checkbox" name="q2" value="timeout">
-            <span><span class="lbl">タイムアウト</span><span class="desc-line">N 秒で auto-close → Claude へ通知</span></span></label></li>
-          <li><label class="opt"><input type="checkbox" name="q2" value="port-conflict">
-            <span><span class="lbl">port 衝突エラー画面</span><span class="desc-line">7777 埋まり時に詳細表示</span></span></label></li>
-          <li><label class="opt other-row"><input type="checkbox" name="q2" value="__other__">
-            <span>
-              <span class="lbl">Other…</span>
-              <input type="text" class="other-text" data-q="q2" placeholder="自由入力 (複数なら ; で区切り)">
-            </span></label></li>
-        </ul>
-      </div>
-      <div class="step-foot">
-        <details class="comment">
-          <summary>comment</summary>
-          <textarea name="q2_comment" id="q2_comment" placeholder="補足や優先順位など"></textarea>
-        </details>
-        <div class="step-nav">
-          <button type="button" class="prev">← prev</button>
-          <button type="button" class="next">next →</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- ───── Q3 rank ───── -->
-    <section class="step" data-step="2" data-kind="rank" data-q="q3">
-      <header class="step-head">
-        <span class="step-num">Q3 / 5</span>
-        <h2>実装の優先順位を並べてください</h2>
-        <span class="kind-tag">rank</span>
-      </header>
-      <div class="desc">
-        <p>上から「先に着手」の順。ドラッグして入れ替え。</p>
-        <p>順位付けの判断基準: <strong>後から変えるコストが大きい</strong> 物を先に着手するのが定石です。Python サーバ実装の "型" は、HTML テンプレートの作りや SKILL.md のスキーマに影響するので、最初に固める必要があります。</p>
-        <p>HTML テンプレートはすでに mockup として存在するので、そこを骨にしてサーバから render するロジックを組み込む形になります。SKILL.md は Skill の入力スキーマと使い方の決定版で、Skill が依存する Skill フレームワーク側の API に合わせる必要があるため、フレームワーク仕様を読み込んでから書きます。</p>
-        <p>Monitor 連携は背面受信が動くかの最終検証で、ここで詰まるとサーバ実装をやり直す可能性があるため、<em>序盤で軽く動作確認</em> しておくのが安全です。「動くフレーム」を最後に作ると手戻りが大きい。</p>
-      </div>
-      <div class="answer">
-        <ul class="rank" id="rank">
-          <li class="rank-item" draggable="true" data-id="server">
-            <span class="rank-pos">1</span><span class="rank-grip"></span>
-            <span class="rank-text"><span class="lbl">Python サーバ実装</span><span class="desc-line">http.server で 1-shot 受信</span></span></li>
-          <li class="rank-item" draggable="true" data-id="template">
-            <span class="rank-pos">2</span><span class="rank-grip"></span>
-            <span class="rank-text"><span class="lbl">HTML テンプレート確定</span><span class="desc-line">この mockup を骨にする</span></span></li>
-          <li class="rank-item" draggable="true" data-id="skillmd">
-            <span class="rank-pos">3</span><span class="rank-grip"></span>
-            <span class="rank-text"><span class="lbl">SKILL.md 整備</span><span class="desc-line">入力スキーマと使い方</span></span></li>
-          <li class="rank-item" draggable="true" data-id="monitor">
-            <span class="rank-pos">4</span><span class="rank-grip"></span>
-            <span class="rank-text"><span class="lbl">Monitor 連携の検証</span><span class="desc-line">background server → Monitor</span></span></li>
-        </ul>
-      </div>
-      <div class="step-foot">
-        <details class="comment">
-          <summary>comment</summary>
-          <textarea name="q3_comment" id="q3_comment" placeholder="順位付け不能・追加項目など"></textarea>
-        </details>
-        <div class="step-nav">
-          <button type="button" class="prev">← prev</button>
-          <button type="button" class="next">next →</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- ───── Q4 single (timeout) ───── -->
-    <section class="step" data-step="3" data-kind="single" data-q="q4">
-      <header class="step-head">
-        <span class="step-num">Q4 / 5</span>
-        <h2>タイムアウト時の挙動はどう返したい？</h2>
-        <span class="kind-tag">single</span>
-      </header>
-      <div class="desc">
-        <p>このスキルは Bash 同期ブロックではなく <strong>Monitor 経由の背面受信</strong>。サーバは background で起動し続けるため、ユーザーが応答しないケース (画面を閉じた・席を立った) で永遠に生かしておくわけにはいきません。タイムアウトの仕様はこのスキルの "終わり方" を決める重要な決定です。</p>
-        <p>そのため Skill は起動時に <code>timeoutSec</code> を受け取り、サーバ側でカウントダウン。指定秒を過ぎても POST が来なければサーバを終了し、Claude には JSON で通知が飛びます。問題は <strong>その通知の形と、Claude の続きの動き</strong>。</p>
-        <p>典型的には次の 2 形式が考えられます:</p>
-        <pre><span class="c"># A. error 扱い (exit 1 + stderr)</span>
-{ <span class="s">"event"</span>: <span class="s">"timeout"</span>, <span class="s">"elapsedSec"</span>: 300 }
-
-<span class="c"># B. answer JSON に flag (exit 0)</span>
-{ <span class="s">"event"</span>: <span class="s">"answer"</span>, <span class="s">"timedOut"</span>: <span class="k">true</span>, <span class="s">"answers"</span>: {}, <span class="s">"elapsedSec"</span>: 300 }</pre>
-        <p>A は Bash の exit code でも区別できる代わりに、Claude 側で「これは timeout だ、retry すべきかユーザに確認すべきか」を毎回判断する必要があり、<strong>呼び出し側の負担が大きく</strong> なります。例外的な制御フロー (try/catch) で扱う事になり、コードが分岐がちです。</p>
-        <p>一方 B は構造化レスポンスとして一貫性があり、Claude は <code>timedOut</code> の真偽だけ見れば済みます。<code>if (result.timedOut)</code> 一行で分岐できる。「明示的に答えなかった」と「答えたが timeout 直前に submit した」が紛れる懸念はあるため、<code>elapsedSec</code> 等のメタ情報も同梱したい所。さらに <code>partialAnswers</code> (timeout 直前に答えていた質問) を入れれば部分回答も拾える設計になります。</p>
-        <p>スキルの第一目標は <em>エンジニアにとっての扱いやすさ</em>。呼び出し側の分岐が浅くなる方を選びたい。<code>if (result.timedOut)</code> で済むのと、<code>try { ... } catch (TimeoutError)</code> が必要なのでは、可読性とエラー処理の負担が違います。「失敗を例外で表すか結果値で表すか」の Go 的選択でもあります。</p>
-      </div>
-      <div class="answer">
-        <ul class="options">
-          <li><label class="opt"><input type="radio" name="q4" value="answer-with-flag">
-            <span><span class="lbl">B. answer JSON に <code>timedOut: true</code></span><span class="desc-line">構造化された統一レスポンス。呼び出し側の分岐が浅い</span></span></label></li>
-          <li><label class="opt"><input type="radio" name="q4" value="error">
-            <span><span class="lbl">A. error として exit 1 + stderr</span><span class="desc-line">Bash の exit code で区別可能</span></span></label></li>
-          <li><label class="opt"><input type="radio" name="q4" value="hybrid">
-            <span><span class="lbl">両方 (event 種別で判定可)</span><span class="desc-line">情報量は最大だが処理がやや複雑</span></span></label></li>
-          <li><label class="opt other-row"><input type="radio" name="q4" value="__other__">
-            <span>
-              <span class="lbl">Other…</span>
-              <input type="text" class="other-text" data-q="q4" placeholder="自由入力">
-            </span></label></li>
-        </ul>
-      </div>
-      <div class="step-foot">
-        <details class="comment">
-          <summary>comment</summary>
-          <textarea name="q4_comment" id="q4_comment" placeholder="補足や条件付き選択"></textarea>
-        </details>
-        <div class="step-nav">
-          <button type="button" class="prev">← prev</button>
-          <button type="button" class="next">next →</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- ───── Q5 single (server) ───── -->
-    <section class="step" data-step="4" data-kind="single" data-q="q5">
-      <header class="step-head">
-        <span class="step-num">Q5 / 5</span>
-        <h2>サーバ起動方式はどちらにする？</h2>
-        <span class="kind-tag">single</span>
-      </header>
-      <div class="desc">
-        <p>Skill が Bash で起動するサーバを <strong>foreground で 1-shot 動作</strong>させるか、<strong>background で常駐型</strong>にするかで全体の動きが変わります。両方とも実装可能ですが、Claude 側の体験が大きく異なるため、最初に決めておきたい設計判断です。</p>
-        <p>foreground 1-shot は <em>同期 RPC</em> です。Bash が <code>server.py</code> を呼ぶ → ブラウザでユーザが answer → server がそれを stdout で返して exit → Bash の戻り値として Claude に返る。シンプルで、デバッグもしやすい。ただし Claude は応答が来るまで待機状態になり、他の事ができません。</p>
-        <p>background + Monitor は <em>非同期 push</em>。Bash で server を background 起動し、Monitor ツールが server の stdout を tail。ユーザが answer したタイミングで Monitor が Claude に通知 → Claude が次のアクションを開始。Claude は server 起動後、別のタスクと並行作業できます。</p>
-        <figure>
-          <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                <path d="M0,0 L10,5 L0,10 z" fill="#b1bac4"/>
-              </marker>
-            </defs>
-            <style>
-              .box { fill:#1c2128; stroke:#30363d; stroke-width:1; }
-              .lbl { fill:#f0f6fc; font: 12px -apple-system, system-ui, sans-serif; font-weight:600; }
-              .sub { fill:#b1bac4; font: 11px ui-monospace, "SF Mono", monospace; }
-              .arr { stroke:#b1bac4; stroke-width:1.2; fill:none; }
-              .acc { stroke:#58a6ff; }
-              .ttl { fill:#58a6ff; font: 700 11px -apple-system, system-ui, sans-serif; letter-spacing:.06em; }
-            </style>
-            <text x="20" y="22" class="ttl">A. FOREGROUND (1-shot)</text>
-            <rect class="box" x="20"  y="36" width="100" height="44" rx="4"/>
-            <text class="lbl" x="70" y="56" text-anchor="middle">Claude</text>
-            <text class="sub" x="70" y="72" text-anchor="middle">bash blocks</text>
-            <rect class="box" x="160" y="36" width="100" height="44" rx="4"/>
-            <text class="lbl" x="210" y="56" text-anchor="middle">server.py</text>
-            <text class="sub" x="210" y="72" text-anchor="middle">stdout / exit</text>
-            <rect class="box" x="300" y="36" width="100" height="44" rx="4"/>
-            <text class="lbl" x="350" y="56" text-anchor="middle">browser</text>
-            <text class="sub" x="350" y="72" text-anchor="middle">user submit</text>
-            <line class="arr" x1="120" y1="58" x2="160" y2="58" marker-end="url(#arr)"/>
-            <line class="arr" x1="260" y1="58" x2="300" y2="58" marker-end="url(#arr)"/>
-            <line class="arr acc" x1="350" y1="80" x2="350" y2="100"/>
-            <line class="arr acc" x1="350" y1="100" x2="210" y2="100"/>
-            <line class="arr acc" x1="210" y1="100" x2="210" y2="80" marker-end="url(#arr)"/>
-            <text class="sub" x="280" y="116" fill="#58a6ff">POST /answer</text>
-            <text x="20" y="148" class="ttl">B. BACKGROUND + MONITOR</text>
-            <rect class="box" x="20"  y="162" width="100" height="44" rx="4"/>
-            <text class="lbl" x="70" y="182" text-anchor="middle">Claude</text>
-            <text class="sub" x="70" y="198" text-anchor="middle">non-blocking</text>
-            <rect class="box" x="160" y="162" width="100" height="44" rx="4"/>
-            <text class="lbl" x="210" y="182" text-anchor="middle">server.py</text>
-            <text class="sub" x="210" y="198" text-anchor="middle">bg / stdout</text>
-            <rect class="box" x="300" y="162" width="100" height="44" rx="4"/>
-            <text class="lbl" x="350" y="182" text-anchor="middle">browser</text>
-            <text class="sub" x="350" y="198" text-anchor="middle">user submit</text>
-            <rect class="box" x="440" y="162" width="100" height="44" rx="4"/>
-            <text class="lbl" x="490" y="182" text-anchor="middle">Monitor</text>
-            <text class="sub" x="490" y="198" text-anchor="middle">tails stdout</text>
-            <line class="arr" x1="120" y1="184" x2="160" y2="184" marker-end="url(#arr)"/>
-            <line class="arr" x1="260" y1="184" x2="300" y2="184" marker-end="url(#arr)"/>
-            <line class="arr acc" x1="350" y1="206" x2="350" y2="220"/>
-            <path class="arr acc" d="M 260 175 Q 280 230 440 175" marker-end="url(#arr)"/>
-            <line class="arr acc" x1="540" y1="184" x2="580" y2="184"/>
-            <text class="sub" x="586" y="188" fill="#58a6ff">→ Claude</text>
-          </svg>
-          <figcaption>A: 1 質問 = 1 Bash 呼び出しで完結。シンプルだが Claude が待機中は他作業ができない。 B: server を背面で動かし Monitor で stdout を拾う。Claude は並行作業可能。</figcaption>
-        </figure>
-        <p>判断基準: 「Claude の応答時間」を最優先するなら B。たとえば <em>「ユーザに 1 問質問しつつ、別ファイルを読み始める」</em> という並行動作は B でしか成立しません。逆に「実装を最小に保ちたい」なら A も合理的。 A→B の移行は <code>subprocess.Popen</code> の起動方式変更だけで済むので、後からでも切り替えられます。</p>
-        <p>kumazaki さんの指定では <strong>B (Monitor 背面受信)</strong>。Skill の使われ方が「Claude が長時間考える間に質問を挟む」ケースを想定していて、Claude が固まらない事を優先しています。最初から B で書く方が型が固まる。</p>
-      </div>
-      <div class="answer">
-        <ul class="options">
-          <li><label class="opt"><input type="radio" name="q5" value="bg-monitor">
-            <span><span class="lbl">B. background + Monitor 背面受信</span><span class="desc-line">Claude が並行作業可能。指定通りの方針</span></span></label></li>
-          <li><label class="opt"><input type="radio" name="q5" value="fg-block">
-            <span><span class="lbl">A. foreground 1-shot 同期ブロック</span><span class="desc-line">実装最小だが Claude が待機する</span></span></label></li>
-          <li><label class="opt other-row"><input type="radio" name="q5" value="__other__">
-            <span>
-              <span class="lbl">Other…</span>
-              <input type="text" class="other-text" data-q="q5" placeholder="自由入力">
-            </span></label></li>
-        </ul>
-      </div>
-      <div class="step-foot">
-        <details class="comment">
-          <summary>comment</summary>
-          <textarea name="q5_comment" id="q5_comment" placeholder="補足や条件付き選択"></textarea>
-        </details>
-        <div class="step-nav">
-          <button type="button" class="prev">← prev</button>
-          <button type="button" class="next" disabled>next →</button>
-        </div>
-      </div>
-    </section>
-
-  </main>
+  <main class="stage" id="stage"></main>
 </div>
 
 <footer class="footbar" role="contentinfo">
   <div class="footbar-inner">
     <div class="meta">
-      <span class="timer" id="timer">⏱ <span class="num">04:23</span></span>
+      <span class="timer" id="timer">⏱ <span class="num">--:--</span></span>
       <span class="missing-pill" id="missingPill" hidden>⚠ <span id="missingList"></span></span>
     </div>
     <div class="actions">
@@ -880,63 +608,190 @@
 <script>
 (() => {
   const OTHER = '__other__';
-  const TOTAL_SEC = 4 * 60 + 23;
+  const data = JSON.parse(document.getElementById('auq-questions').textContent);
+  const meta = data.meta || {};
+  const questions = data.questions || [];
+  const N = questions.length;
+  const TIMEOUT_SEC = (meta.timeoutSec === undefined) ? 300 : meta.timeoutSec;
+  const UNLIMITED = TIMEOUT_SEC === 0;
+  const startedAt = Date.now();
 
-  const stage    = document.getElementById('stage');
-  const chips    = [...document.querySelectorAll('#chips .chip')];
-  const steps    = [...document.querySelectorAll('.step')];
-  const stepCnt  = steps.length;
-  const missingC = document.getElementById('missingCount');
-  const missingP = document.getElementById('missingPill');
-  const missingL = document.getElementById('missingList');
-  const submitBt = document.getElementById('submitBtn');
-  const rejectBt = document.getElementById('rejectBtn');
-  let current = 0;
+  // ───── DOM builder helper.
+  // props: {class, dataset:{...}, あとは element の property に流す}.
+  // children: string は textNode に、null/false は skip、Array は flatten
+  function el(tag, props = {}, ...children) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+      if (v == null) continue;
+      if (k === 'class') e.className = v;
+      else if (k === 'dataset') Object.assign(e.dataset, v);
+      else if (k in e) e[k] = v;
+      else e.setAttribute(k, v);
+    }
+    for (const c of children.flat()) {
+      if (c == null || c === false) continue;
+      e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+    }
+    return e;
+  }
+
+  // ───── header (repo) ─────
+  const repoEl = document.getElementById('repo');
+  if (meta.repo) {
+    repoEl.textContent = meta.repo;
+  } else {
+    // repo が無ければ "...· 0 missing" の sep が浮くので header-meta 自体を簡略化
+    repoEl.style.display = 'none';
+    document.querySelector('.header-meta .missing-sep').style.display = 'none';
+  }
+
+  // ───── 1 質問時の UI 簡略化: chips を畳む ─────
+  if (N === 1) document.querySelector('.header-strip').classList.add('single-q');
+
+  // ───── chips ─────
+  const chipsEl = document.getElementById('chips');
+  questions.forEach((q, i) => {
+    chipsEl.appendChild(el('button', {
+      type: 'button',
+      class: 'chip' + (i === 0 ? ' active' : ''),
+      dataset: { step: String(i), state: 'pending' },
+      'aria-label': `Q${i + 1} へ`,
+    }, `Q${i + 1}`, el('span', { class: 'state', 'aria-hidden': 'true' })));
+  });
+
+  // ───── desc 内 <script> を実行可能化するヘルパ (§6.3).
+  // innerHTML 後に <script> を新 element に差し替えると, ブラウザが「新しい
+  // script element」と判断して実行する. type=module / src=... も意図通り動く
+  function setDescHtml(target, html) {
+    target.innerHTML = html;
+    target.querySelectorAll('script').forEach(old => {
+      const fresh = document.createElement('script');
+      [...old.attributes].forEach(a => fresh.setAttribute(a.name, a.value));
+      fresh.textContent = old.textContent;
+      old.replaceWith(fresh);
+    });
+  }
+
+  // ───── section builder ─────
+  function buildOption(q, opt, inputType, isOther = false) {
+    const labelChildren = [
+      el('span', { class: 'lbl' }, isOther ? 'Other…' : opt.label),
+      isOther
+        ? el('input', { type: 'text', class: 'other-text',
+                        dataset: { q: q.id }, placeholder: '自由入力' })
+        : (opt.hint && el('span', { class: 'desc-line' }, opt.hint)),
+    ];
+    return el('li', {}, el('label', { class: 'opt' + (isOther ? ' other-row' : '') },
+      el('input', { type: inputType, name: q.id, value: isOther ? OTHER : opt.value }),
+      el('span', {}, ...labelChildren),
+    ));
+  }
+
+  function buildRankItem(it, idx) {
+    return el('li', {
+      class: 'rank-item', draggable: true, dataset: { id: it.id },
+    },
+      el('span', { class: 'rank-pos' }, String(idx + 1)),
+      el('span', { class: 'rank-grip' }),
+      el('span', { class: 'rank-text' },
+        el('span', { class: 'lbl' }, it.label),
+        it.hint && el('span', { class: 'desc-line' }, it.hint),
+      ),
+    );
+  }
+
+  function buildAnswer(q) {
+    if (q.kind === 'rank') {
+      return el('ul', { class: 'rank', dataset: { rankFor: q.id } },
+        ...(q.items || []).map(buildRankItem));
+    }
+    // single / multi: options + optional Other 行
+    const inputType = q.kind === 'single' ? 'radio' : 'checkbox';
+    const items = (q.options || []).map(opt => buildOption(q, opt, inputType));
+    if (q.allowOther) items.push(buildOption(q, null, inputType, true));
+    return el('ul', { class: 'options' }, ...items);
+  }
+
+  function buildSection(q, i) {
+    const head = el('header', { class: 'step-head' },
+      N > 1 && el('span', { class: 'step-num' }, `Q${i + 1} / ${N}`),
+      el('h2', {}, q.title),
+      el('span', { class: 'kind-tag' }, q.kind),
+    );
+    const desc = el('div', { class: 'desc' });
+    const foot = el('div', { class: 'step-foot' },
+      el('details', { class: 'comment' },
+        el('summary', {}, 'comment'),
+        el('textarea', {
+          name: `${q.id}_comment`, id: `${q.id}_comment`,
+          placeholder: '補足や条件付き選択など',
+        }),
+      ),
+      N > 1 && el('div', { class: 'step-nav' },
+        el('button', { type: 'button', class: 'prev',
+                       textContent: '← prev', disabled: i === 0 }),
+        el('button', { type: 'button', class: 'next',
+                       textContent: 'next →', disabled: i === N - 1 }),
+      ),
+    );
+    const sec = el('section', {
+      class: 'step' + (i === 0 ? ' active' : ''),
+      dataset: { step: String(i), kind: q.kind, q: q.id },
+    }, head, desc, el('div', { class: 'answer' }, buildAnswer(q)), foot);
+
+    setDescHtml(desc, q.descHtml || '');
+    return sec;
+  }
+
+  // ───── stage build ─────
+  const stageEl = document.getElementById('stage');
+  questions.forEach((q, i) => stageEl.appendChild(buildSection(q, i)));
 
   // ───── step navigation ─────
+  const chips = [...document.querySelectorAll('#chips .chip')];
+  const steps = [...document.querySelectorAll('.step')];
+  let current = 0;
   function showStep(i) {
-    if (i < 0 || i >= stepCnt) return;
+    if (i < 0 || i >= N) return;
     current = i;
     steps.forEach((s, idx) => s.classList.toggle('active', idx === i));
     chips.forEach((c, idx) => c.classList.toggle('active', idx === i));
-    chips[i].scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+    if (chips[i]) chips[i].scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
-  chips.forEach((c) => c.addEventListener('click', () => showStep(parseInt(c.dataset.step, 10))));
-  stage.addEventListener('click', (e) => {
+  chips.forEach(c => c.addEventListener('click', () => showStep(parseInt(c.dataset.step, 10))));
+  stageEl.addEventListener('click', e => {
     if (e.target.matches('.prev')) showStep(current - 1);
     if (e.target.matches('.next')) showStep(current + 1);
   });
 
   // ───── answered detection ─────
+  // step 内の Other... 自由入力欄の値. 未入力 (空 or whitespace のみ) は ''
+  function otherText(step) {
+    return step.querySelector('.other-text')?.value.trim() || '';
+  }
+
   function isAnswered(stepIdx) {
     const step = steps[stepIdx];
     const kind = step.dataset.kind;
-    const q    = step.dataset.q;
+    const q = step.dataset.q;
     if (kind === 'single') {
       const r = step.querySelector(`input[name="${q}"]:checked`);
       if (!r) return false;
-      if (r.value === OTHER) {
-        const t = step.querySelector('.other-text');
-        return !!(t && t.value.trim());
-      }
-      return true;
+      return r.value !== OTHER || !!otherText(step);
     }
     if (kind === 'multi') {
       const cs = [...step.querySelectorAll(`input[name="${q}"]:checked`)];
       if (!cs.length) return false;
-      if (cs.some(c => c.value === OTHER)) {
-        const t = step.querySelector('.other-text');
-        if (!t || !t.value.trim()) return false;
-      }
-      return true;
+      return !cs.some(c => c.value === OTHER) || !!otherText(step);
     }
-    if (kind === 'rank') {
-      // rank: 任意の並び順が valid な answer なので "未回答" 状態は存在しない
-      return true;
-    }
+    if (kind === 'rank') return true;  // 任意の並びが valid
     return false;
   }
+
+  const missingC = document.getElementById('missingCount');
+  const missingP = document.getElementById('missingPill');
+  const missingL = document.getElementById('missingList');
 
   function updateState() {
     const missing = [];
@@ -954,33 +809,25 @@
       missingP.hidden = true;
     }
   }
-
   document.addEventListener('change', updateState);
-  // input は .other-text 限定: comment 用 textarea は answered に影響しないので無視
-  document.addEventListener('input', (e) => {
+  document.addEventListener('input', e => {
     if (!e.target.classList?.contains('other-text')) return;
-    // なぜ自動 check: Other 欄に入力済みなのに radio を押し忘れて未回答扱いになる事故を防ぐ
     const wrap = e.target.closest('.other-row');
     const radio = wrap?.querySelector('input[type="radio"], input[type="checkbox"]');
-    if (radio && e.target.value && !radio.checked) {
-      radio.checked = true;
-    }
+    if (radio && e.target.value && !radio.checked) radio.checked = true;
     updateState();
   });
-
   updateState();
 
-  // ───── rank drag ─────
-  const rank = document.getElementById('rank');
-  if (rank) {
-    let dragEl = null;
-    let lastOver = null;
-    rank.addEventListener('dragstart', (e) => {
+  // ───── rank drag (各 .rank list ごとに bind) ─────
+  document.querySelectorAll('.rank').forEach(rank => {
+    let dragEl = null, lastOver = null;
+    rank.addEventListener('dragstart', e => {
       if (!e.target.classList?.contains('rank-item')) return;
       dragEl = e.target;
       e.target.classList.add('dragging');
     });
-    rank.addEventListener('dragend', (e) => {
+    rank.addEventListener('dragend', e => {
       if (!e.target.classList?.contains('rank-item')) return;
       e.target.classList.remove('dragging');
       lastOver?.classList.remove('over');
@@ -989,11 +836,10 @@
       dragEl = null;
       updateState();
     });
-    rank.addEventListener('dragover', (e) => {
+    rank.addEventListener('dragover', e => {
       e.preventDefault();
       const t = e.target.closest('.rank-item');
       if (!t || t === dragEl) return;
-      // dragover は 60Hz で発火するので、ハイライト対象が変わった時だけ class を付け替える
       if (lastOver !== t) {
         lastOver?.classList.remove('over');
         t.classList.add('over');
@@ -1003,115 +849,105 @@
       const after = (e.clientY - rect.top) / rect.height > 0.5;
       rank.insertBefore(dragEl, after ? t.nextSibling : t);
     });
-  }
+  });
 
   // ───── keys ─────
-  document.addEventListener('keydown', (e) => {
-    // ⌘+Enter / Ctrl+Enter → submit
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-      e.preventDefault();
-      doSubmit();
-      return;
-    }
-    // Esc → reject
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      doReject();
-      return;
-    }
-    // textarea / input にフォーカスがある時は arrow/数字を奪わない
+  document.addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); doSubmit(); return; }
+    if (e.key === 'Escape') { e.preventDefault(); doReject(); return; }
     const tag = document.activeElement?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    if (N <= 1) return;
     if (e.key === 'ArrowLeft')  { e.preventDefault(); showStep(current - 1); }
     if (e.key === 'ArrowRight') { e.preventDefault(); showStep(current + 1); }
     if (/^[1-9]$/.test(e.key)) {
       const t = parseInt(e.key, 10) - 1;
-      if (t < stepCnt) {
-        e.preventDefault();
-        showStep(t);
-      }
+      if (t < N) { e.preventDefault(); showStep(t); }
     }
   });
 
-  // ───── timer (mock) ─────
-  let remain = TOTAL_SEC;
-  const tEl   = document.getElementById('timer');
-  const tNum  = tEl.querySelector('.num');
-  let lastTxt = '';
-  setInterval(() => {
-    remain = Math.max(0, remain - 1);
-    const m = String(Math.floor(remain / 60)).padStart(2, '0');
-    const s = String(remain % 60).padStart(2, '0');
-    const txt = `${m}:${s}`;
-    if (txt === lastTxt) return;  // 0 秒で固まった後の無駄な書き込みを避ける
-    lastTxt = txt;
-    tNum.textContent = txt;
-    tEl.classList.toggle('warn',   remain <= 30 && remain > 10);
-    tEl.classList.toggle('danger', remain <= 10 && remain > 0);
-  }, 1000);
+  // ───── timer (meta.timeoutSec 駆動) ─────
+  const tEl = document.getElementById('timer');
+  const tNum = tEl.querySelector('.num');
+  if (UNLIMITED) {
+    // 無制限なので timer を出さない (Skill 側で long-poll する想定)
+    tEl.style.display = 'none';
+  } else {
+    let remain = TIMEOUT_SEC;
+    let lastTxt = '';
+    const writeTimer = () => {
+      const m = String(Math.floor(remain / 60)).padStart(2, '0');
+      const s = String(remain % 60).padStart(2, '0');
+      const txt = `${m}:${s}`;
+      if (txt === lastTxt) return;
+      lastTxt = txt;
+      tNum.textContent = txt;
+      tEl.classList.toggle('warn',   remain <= 30 && remain > 10);
+      tEl.classList.toggle('danger', remain <= 10 && remain > 0);
+    };
+    writeTimer();
+    setInterval(() => {
+      remain = Math.max(0, remain - 1);
+      writeTimer();
+    }, 1000);
+  }
 
   // ───── submit / reject ─────
+  function elapsedSec() {
+    return Math.round((Date.now() - startedAt) / 1000);
+  }
+
   function buildPayload() {
-    const out = { event: 'answer', timedOut: false, answers: {}, elapsedSec: TOTAL_SEC - remain };
+    const out = { event: 'answer', timedOut: false, answers: {}, elapsedSec: elapsedSec() };
     steps.forEach(step => {
       const q = step.dataset.q;
       const kind = step.dataset.kind;
       const comment = step.querySelector(`#${q}_comment`)?.value.trim() || '';
+      const withCommon = (extra) => ({
+        kind, ...extra, ...(comment ? { comment } : {}),
+      });
       if (kind === 'single') {
-        const r  = step.querySelector(`input[name="${q}"]:checked`);
-        const ot = step.querySelector('.other-text');
-        out.answers[q] = {
-          kind, selected: r ? r.value : null,
-          ...(r?.value === OTHER ? { otherText: ot.value.trim() } : {}),
-          ...(comment ? { comment } : {}),
-        };
+        const r = step.querySelector(`input[name="${q}"]:checked`);
+        out.answers[q] = withCommon({
+          selected: r ? r.value : null,
+          ...(r?.value === OTHER ? { otherText: otherText(step) } : {}),
+        });
       } else if (kind === 'multi') {
         const sels = [...step.querySelectorAll(`input[name="${q}"]:checked`)].map(i => i.value);
-        const ot   = step.querySelector('.other-text');
-        out.answers[q] = {
-          kind, selected: sels,
-          ...(sels.includes(OTHER) ? { otherText: ot.value.trim() } : {}),
-          ...(comment ? { comment } : {}),
-        };
+        out.answers[q] = withCommon({
+          selected: sels,
+          ...(sels.includes(OTHER) ? { otherText: otherText(step) } : {}),
+        });
       } else if (kind === 'rank') {
         const ranking = [...step.querySelectorAll('.rank-item')].map(li => li.dataset.id);
-        out.answers[q] = {
-          kind, ranking,
-          ...(comment ? { comment } : {}),
-        };
+        out.answers[q] = withCommon({ ranking });
       }
     });
     return out;
   }
-  // POST /answer 後、サーバは stdout に JSON を吐いてから exit するため、
-  // fetch の resolve 後すぐに接続が切れる。closing-screen は出したまま放置し、
-  // ユーザは「閉じていい」表示を見て手動でタブを閉じる。
+
   function postAnswer(payload) {
-    // keepalive: サーバはレスポンス後すぐに graceful shutdown するため、
-    // ページ unload や接続早期切断でも POST 本体が確実に届くよう保険をかける
     return fetch('/answer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
       keepalive: true,
-    }).catch(err => {
-      console.error('POST /answer failed:', err);
-    });
+    }).catch(err => console.error('POST /answer failed:', err));
   }
+
   function doSubmit() {
-    const payload = buildPayload();
     document.getElementById('closingScreen').classList.add('show');
-    postAnswer(payload);
+    postAnswer(buildPayload());
   }
   function doReject() {
     if (!confirm('reject しますか？ 回答せずに閉じます。')) return;
-    const payload = { event: 'reject', timedOut: false, elapsedSec: TOTAL_SEC - remain };
     document.getElementById('closingScreen').classList.add('show');
-    postAnswer(payload);
+    postAnswer({ event: 'reject', timedOut: false, elapsedSec: elapsedSec() });
   }
-  submitBt.addEventListener('click', doSubmit);
-  rejectBt.addEventListener('click', doReject);
+  document.getElementById('submitBtn').addEventListener('click', doSubmit);
+  document.getElementById('rejectBtn').addEventListener('click', doReject);
 })();
+</script>
 </script>
 </body>
 </html>

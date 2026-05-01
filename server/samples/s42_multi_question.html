@@ -1,0 +1,32 @@
+<script type="application/auq+json">
+{ "$auq": "meta", "repo": "auq-web", "timeoutSec": 300 }
+</script>
+
+<script type="application/auq+json">
+{
+  "id": "q1",
+  "title": "ライブラリを Python で固める方針で OK ?",
+  "kind": "single",
+  "options": [
+    { "value": "python", "label": "Python で固める", "hint": "依存ゼロ" },
+    { "value": "bun",    "label": "Bun で書く",    "hint": "brew install bun" }
+  ],
+  "allowOther": true
+}
+</script>
+<p>auq-web の起動部分は <strong>...</strong></p>
+<table>...</table>
+
+<script type="application/auq+json">
+{
+  "id": "q3",
+  "title": "実装の優先順位を並べてください",
+  "kind": "rank",
+  "items": [
+    { "id": "server",   "label": "Python サーバ実装", "hint": "http.server で 1-shot" },
+    { "id": "template", "label": "HTML テンプレ確定", "hint": "mockup を骨にする" }
+  ]
+}
+</script>
+<p>上から「先に着手」の順。ドラッグして入れ替え。</p>
+<p>順位付けの判断基準: <strong>後から変えるコストが大きい</strong> 物を ...</p>

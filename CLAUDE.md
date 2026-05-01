@@ -31,8 +31,16 @@ Claude → /<skill> → bash で server.py を background 起動 → open http:/
 ```
 auq-web/
 ├── CLAUDE.md
-├── docs/
-│   └── mockup.html    # UI モック (実装の骨)
-├── skill/             # (未着手) SKILL.md とエントリスクリプト
-└── server/            # (未着手) Python サーバと HTML テンプレート
+├── Makefile           # `make serve INPUT=...` で動作確認
+├── server/
+│   ├── parser.py      # HTML fragment → 内部表現 (純粋関数, §3/§5)
+│   ├── wire.py        # `<` → \\u003c の escape + テンプレ置換 (§6.1.1)
+│   ├── server.py      # stdin (or --input) → parse → render → 1-shot HTTP 配信
+│   ├── index.html     # __AUQ_DATA__ sentinel + 動的 render する SPA
+│   ├── samples/       # 仕様 §4 の入力例 fixture
+│   └── test_*.py      # parser / wire / samples の unittest
+└── skill/             # (未着手) SKILL.md と Claude が呼ぶエントリスクリプト
 ```
+
+仕様の詳細 (入力フォーマット §3, パーサ実装 §5, wire format §6) は
+`.local/input-format.md` に置いてある (作業中なので gitignore 配下)。
