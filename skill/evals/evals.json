@@ -1,0 +1,26 @@
+{
+  "skill_name": "auq-web",
+  "evals": [
+    {
+      "id": 0,
+      "name": "trigger-async-pattern",
+      "prompt": "Python の async/await でレポジトリ全体の指針を決めたい。`asyncio.gather` と `asyncio.TaskGroup` (3.11+) の使い分けには 3 通りの方針 (gather に統一 / TaskGroup に統一 / 状況によって両方使い分け) があって、それぞれ想定する典型ケースと典型的な失敗例 (例外伝播の挙動差) を簡単なコード例付きで見せた上で、どの方針にするか決めたい。コード例の比較込みで判断したい。",
+      "expected_output": "auq-web を起動して single 質問 + コード例を含む desc HTML で確認画面を出す。kind=single, options 3 件以上, desc に <pre><code> を含む。",
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "kind-rank",
+      "prompt": "次の sprint で着手したいタスクが 5 個ある: (a) auq-web の skill description を最適化、(b) auq-web に timeout 強制機能を追加、(c) auq-web の sample を拡充、(d) 別 skill (sentinel) の review プロンプトを改善、(e) 別 repo の review を統合。優先順位を決めたいので並べてほしい。",
+      "expected_output": "auq-web を起動して rank 質問で確認画面を出す。kind=rank, items 5 件, それぞれ短い hint 付き。",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "table-multienv",
+      "prompt": "kcdev / kcstg / kcprd の 3 環境で、ArgoCD の app-of-apps 構成 と CI のジョブ一覧 / 自動 sync の有無 / Secret 管理方式 の差分を 1 つの表で並べて見せて、新規 app を追加する時にどれを参考にするか決めたい。",
+      "expected_output": "auq-web を起動して single 質問 + 比較表 (HTML <table>) を含む desc HTML で確認画面を出す。kind=single, options 3 件 (kcdev/kcstg/kcprd), desc に <table> を含む。",
+      "files": []
+    }
+  ]
+}

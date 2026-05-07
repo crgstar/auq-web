@@ -20,6 +20,7 @@ import os
 import subprocess
 import sys
 import threading
+import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from parser import InvalidInput, parse_input
@@ -122,6 +123,10 @@ def main() -> int:
         "--input",
         help="HTML fragment ファイルパス. 省略時は stdin (§5.1)",
     )
+    arg_parser.add_argument(
+        "--no-open", action="store_true",
+        help="起動時にブラウザを自動オープンしない (headless / --static 用途)",
+    )
     args = arg_parser.parse_args()
 
     try:
@@ -155,6 +160,15 @@ def main() -> int:
 
     url = f"http://{args.host}:{args.port}/"
     print(f"auq-web listening on {url}", file=sys.stderr)
+    # webbrowser.open は OS 横断 (macOS=open / Linux=xdg-open / Windows=start).
+    # headless / ssh 越しでは False が返るが exit せず警告だけにする:
+    # 「URL を手動で開けば運用上 OK」のケース (ssh tunnel 先で確認するなど)
+    # を潰したくないため.
+    if not args.no_open and not webbrowser.open(url):
+        print(
+            f"⚠️ ブラウザを自動で開けませんでした。手動で {url} を開いてください。",
+            file=sys.stderr,
+        )
     try:
         server.serve_forever(poll_interval=SHUTDOWN_POLL_SEC)
     except KeyboardInterrupt:
