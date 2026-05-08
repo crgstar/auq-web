@@ -95,6 +95,13 @@ class RenderTemplateTest(unittest.TestCase):
         out = render_template(template, {"questions": [{"descHtml": "</script><img>"}]})
         self.assertEqual(out.lower().count("</script>"), 1)
 
+    def test_payload_with_mode_key_is_preserved_verbatim(self):
+        """caller が `{**payload, "mode": "static"}` を渡せばそのまま埋め込まれる事.
+        render_template 自体は payload を改変しない pure な置換器である事を保証する."""
+        template = "__AUQ_DATA__"
+        out = render_template(template, {"questions": [], "mode": "static"})
+        self.assertIn('"mode": "static"', out)
+
 
 if __name__ == "__main__":
     unittest.main()

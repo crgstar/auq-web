@@ -42,7 +42,11 @@ def render_template(
     """`template` 内の sentinel を escape 済み JSON で 1 度だけ置換する.
 
     sentinel が複数回出ると壊れる (multiple replace). 1 回出現を要求し,
-    違反時は ValueError を投げる. これにより template の取り違えを早期検知できる
+    違反時は ValueError を投げる. これにより template の取り違えを早期検知できる.
+
+    payload に "mode" などのモード情報を載せたい場合は呼び出し側で
+    `{**payload, "mode": "static"}` のように準備して渡す. ここでは payload を
+    そのまま埋めるだけの純粋関数.
     """
     count = template.count(sentinel)
     if count == 0:

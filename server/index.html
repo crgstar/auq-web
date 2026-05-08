@@ -177,7 +177,9 @@
     flex-shrink: 0;
   }
 
-  /* ───── desc ───── */
+  /* ───── desc default stylesheet ─────
+     書き手 (Claude) は素のタグだけ書けば dark theme に馴染むのが目的。
+     inline style を毎回書かないと崩れる状態は避ける。 */
   .desc {
     background: var(--surface);
     border: 1px solid var(--rule);
@@ -187,10 +189,64 @@
     font-size: 14.5px;
     line-height: 1.78;
   }
+  .desc > :first-child { margin-top: 0; }
+  .desc > :last-child  { margin-bottom: 0; }
+
+  /* 見出し: 階層感だけ与えて装飾は控えめ. h1 は本文より一段太く */
+  .desc h1, .desc h2, .desc h3, .desc h4, .desc h5, .desc h6 {
+    color: var(--text);
+    margin: 18px 0 8px;
+    line-height: 1.35;
+    font-weight: 700;
+  }
+  .desc h1 { font-size: 18px; padding-bottom: 4px; border-bottom: 1px solid var(--rule); }
+  .desc h2 { font-size: 16px; }
+  .desc h3 { font-size: 14.5px; color: var(--text-dim); }
+  .desc h4, .desc h5, .desc h6 { font-size: 13.5px; color: var(--text-dim); }
+
   .desc p { margin: 0 0 12px; color: var(--text-dim); }
-  .desc p:last-child { margin-bottom: 0; }
   .desc strong { color: var(--text); font-weight: 700; }
   .desc em { color: var(--accent-2); font-style: normal; }
+  .desc small { font-size: 12px; color: var(--text-faint); }
+  .desc s, .desc del { color: var(--text-faint); text-decoration: line-through; }
+  .desc mark {
+    background: var(--warn-bg); color: var(--warn);
+    padding: 0 3px; border-radius: 2px;
+  }
+
+  .desc a {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--accent);
+  }
+  .desc a:hover { color: var(--accent-2); border-bottom-style: solid; }
+
+  /* リスト: nest しても padding が暴走しないように 22px 固定 */
+  .desc ul, .desc ol {
+    margin: 8px 0 12px;
+    padding-left: 22px;
+    color: var(--text-dim);
+  }
+  .desc li { margin: 3px 0; }
+  .desc li::marker { color: var(--text-faint); }
+  .desc ul ul, .desc ol ol, .desc ul ol, .desc ol ul { margin: 3px 0; }
+
+  .desc blockquote {
+    margin: 10px 0;
+    padding: 4px 14px;
+    border-left: 3px solid var(--accent);
+    background: var(--surface-2);
+    color: var(--text-dim);
+    border-radius: 0 4px 4px 0;
+  }
+  .desc blockquote > :last-child { margin-bottom: 0; }
+
+  .desc hr {
+    border: 0;
+    border-top: 1px solid var(--rule);
+    margin: 16px 0;
+  }
+
   .desc code {
     font-family: ui-monospace, "SF Mono", Menlo, monospace;
     font-size: 12.5px;
@@ -211,10 +267,29 @@
     font-size: 12.5px; line-height: 1.55;
     color: var(--text);
   }
+  /* pre 内の code は <pre><code> ネストの二重装飾を避ける */
+  .desc pre code {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    color: inherit;
+    font-size: inherit;
+  }
   .desc pre .c { color: var(--text-faint); }
   .desc pre .k { color: #ff7b72; }
   .desc pre .s { color: #a5d6ff; }
   .desc pre .f { color: #d2a8ff; }
+  .desc kbd {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 11.5px;
+    background: var(--surface-3);
+    color: var(--text);
+    padding: 1px 6px;
+    border-radius: 3px;
+    border: 1px solid var(--rule);
+    border-bottom-width: 2px;
+  }
+
   .desc table {
     border-collapse: collapse; width: 100%;
     font-size: 12.5px; margin: 10px 0;
@@ -223,11 +298,21 @@
     border: 1px solid var(--rule);
     padding: 7px 10px;
     text-align: left;
+    vertical-align: top;
   }
   .desc th { background: var(--surface-2); color: var(--text); font-weight: 600; }
   .desc td { color: var(--text); }
+  .desc tbody tr:nth-child(even) td { background: rgba(255,255,255,.02); }
+
+  .desc img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 5px;
+    border: 1px solid var(--rule);
+    background: var(--code-bg);
+  }
   .desc figure { margin: 10px 0; }
-  .desc figure svg {
+  .desc figure svg, .desc > svg {
     display: block;
     max-width: 100%;
     height: auto;
@@ -237,6 +322,35 @@
     padding: 10px;
   }
   .desc figcaption { font-size: 12px; color: var(--text-faint); margin-top: 8px; }
+
+  .desc details {
+    margin: 10px 0;
+    padding: 8px 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+  }
+  .desc details[open] { padding-bottom: 12px; }
+  .desc details summary {
+    cursor: pointer;
+    color: var(--text);
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .desc details > :not(summary) { color: var(--text-dim); margin-top: 8px; }
+
+  /* 簡易 callout: <p class="note|warn|danger|ok"> でハイライト. 書く側は class 付与だけ */
+  .desc .note, .desc .warn, .desc .danger, .desc .ok {
+    margin: 10px 0;
+    padding: 10px 14px;
+    border-radius: 5px;
+    border-left: 3px solid var(--accent);
+    background: var(--accent-bg);
+    color: var(--text);
+  }
+  .desc .warn   { border-left-color: var(--warn);   background: var(--warn-bg);   }
+  .desc .danger { border-left-color: var(--danger); background: var(--danger-bg); }
+  .desc .ok     { border-left-color: var(--ok);     background: var(--ok-bg);     }
 
   /* ───── answer (普通の流れに配置) ───── */
   .answer { margin-top: 16px; }
@@ -534,6 +648,18 @@
      header-strip 自体は repo / missing 表示のために残す */
   .header-strip.single-q .chips { display: none; }
 
+  /* ───── static mode (--static で生成したスナップショット閲覧用) ─────
+     回答 UI 自体は DOM に残すが、操作禁止 + footbar (submit/reject) を hide.
+     なぜ DOM に残す: 質問本文と「どんな選択肢が並ぶ予定か」を見せたいので
+     options/rank-item 自体は表示する */
+  body.mode-static .footbar { display: none; }
+  body.mode-static .wrap { padding-bottom: 24px; }
+  body.mode-static .opt,
+  body.mode-static .rank-item { cursor: default; }
+  body.mode-static .opt:hover { background: var(--surface); }
+  body.mode-static .rank-item:hover { background: var(--surface); border-color: var(--rule); }
+  body.mode-static .comment { display: none; }
+
   /* closing screen (after submit)
      実装時: POST /answer 完了後、サーバが exit するまでこの画面を残す。
              ユーザは「閉じていい」サインを見て手動でタブを閉じる想定。 */
@@ -614,7 +740,9 @@
   const N = questions.length;
   const TIMEOUT_SEC = (meta.timeoutSec === undefined) ? 300 : meta.timeoutSec;
   const UNLIMITED = TIMEOUT_SEC === 0;
+  const STATIC_MODE = data.mode === 'static';
   const startedAt = Date.now();
+  if (STATIC_MODE) document.body.classList.add('mode-static');
 
   // ───── DOM builder helper.
   // props: {class, dataset:{...}, あとは element の property に流す}.
@@ -747,6 +875,13 @@
   const stageEl = document.getElementById('stage');
   questions.forEach((q, i) => stageEl.appendChild(buildSection(q, i)));
 
+  // STATIC_MODE: 操作不可に倒す. build 内に個別分岐を撒くより 1 回 walk するほうが見通しが良い.
+  // step-nav (prev/next) は閲覧で必要なので残す
+  if (STATIC_MODE) {
+    document.querySelectorAll('.opt input, textarea').forEach(e => { e.disabled = true; });
+    document.querySelectorAll('.rank-item').forEach(e => { e.draggable = false; });
+  }
+
   // ───── step navigation ─────
   const chips = [...document.querySelectorAll('#chips .chip')];
   const steps = [...document.querySelectorAll('.step')];
@@ -853,8 +988,15 @@
 
   // ───── keys ─────
   document.addEventListener('keydown', e => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); doSubmit(); return; }
-    if (e.key === 'Escape') { e.preventDefault(); doReject(); return; }
+    // STATIC_MODE: 送信先が無いので submit/reject ショートカットを抑止. step nav は許可
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      if (STATIC_MODE) return;
+      e.preventDefault(); doSubmit(); return;
+    }
+    if (e.key === 'Escape') {
+      if (STATIC_MODE) return;
+      e.preventDefault(); doReject(); return;
+    }
     const tag = document.activeElement?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
     if (N <= 1) return;
@@ -869,8 +1011,8 @@
   // ───── timer (meta.timeoutSec 駆動) ─────
   const tEl = document.getElementById('timer');
   const tNum = tEl.querySelector('.num');
-  if (UNLIMITED) {
-    // 無制限なので timer を出さない (Skill 側で long-poll する想定)
+  if (STATIC_MODE || UNLIMITED) {
+    // STATIC_MODE: タイマー意味なし. UNLIMITED: 無制限なので Skill 側で long-poll する想定
     tEl.style.display = 'none';
   } else {
     let remain = TIMEOUT_SEC;
@@ -946,6 +1088,83 @@
   }
   document.getElementById('submitBtn').addEventListener('click', doSubmit);
   document.getElementById('rejectBtn').addEventListener('click', doReject);
+
+  // ───── draft auto-save ─────
+  // 800ms debounce で POST /api/draft. タブクラッシュ・誤閉じ・長考 timeout で
+  // 入力消失するのを防ぐ. 失敗は黙殺 (致命的でない & 通常運用には支障無し)
+  if (!STATIC_MODE) {
+    let draftTimer = null;
+    function scheduleDraftSave() {
+      clearTimeout(draftTimer);
+      draftTimer = setTimeout(() => {
+        fetch('/api/draft', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(buildPayload()),
+        }).catch(() => {});
+      }, 800);
+    }
+    document.addEventListener('change', scheduleDraftSave);
+    document.addEventListener('input', e => {
+      // textarea / other-text 系の連続入力を catch
+      if (e.target.matches('textarea, .other-text')) scheduleDraftSave();
+    });
+    // rank の DnD は dragend で順序確定. change イベントは飛ばないので個別 hook
+    document.querySelectorAll('.rank').forEach(r =>
+      r.addEventListener('dragend', scheduleDraftSave),
+    );
+
+    // ───── draft restore (page load 時) ─────
+    // GET /api/draft で前回 draft を取得. 無ければ {} が返る
+    (async () => {
+      try {
+        const res = await fetch('/api/draft');
+        if (!res.ok) return;
+        const draft = await res.json();
+        if (!draft || !draft.answers) return;
+        Object.entries(draft.answers).forEach(([qid, ans]) => {
+          const step = stageEl.querySelector(`.step[data-q="${CSS.escape(qid)}"]`);
+          if (!step) return;
+          if (ans.comment) {
+            const ta = step.querySelector(`#${CSS.escape(qid)}_comment`);
+            if (ta) {
+              ta.value = ans.comment;
+              ta.closest('details').open = true;
+            }
+          }
+          const qSel = `input[name="${CSS.escape(qid)}"]`;
+          if (ans.kind === 'single' && ans.selected != null) {
+            const r = step.querySelector(`${qSel}[value="${CSS.escape(ans.selected)}"]`);
+            if (r) r.checked = true;
+          } else if (ans.kind === 'multi' && Array.isArray(ans.selected)) {
+            ans.selected.forEach(v => {
+              const c = step.querySelector(`${qSel}[value="${CSS.escape(v)}"]`);
+              if (c) c.checked = true;
+            });
+          } else if (ans.kind === 'rank' && Array.isArray(ans.ranking)) {
+            const list = step.querySelector('.rank');
+            if (list) {
+              const byId = {};
+              [...list.children].forEach(li => byId[li.dataset.id] = li);
+              // ranking 順に append (= 並び替え). ranking に無い id は末尾の元順序を保つ
+              ans.ranking.forEach(id => {
+                if (byId[id]) { list.appendChild(byId[id]); delete byId[id]; }
+              });
+              [...list.children].forEach((li, i) =>
+                li.querySelector('.rank-pos').textContent = i + 1,
+              );
+            }
+          }
+          // OTHER 選択時の自由入力欄を書き戻す: radio/checkbox を立てた後に入れる
+          if (ans.otherText) {
+            const ot = step.querySelector('.other-text');
+            if (ot) ot.value = ans.otherText;
+          }
+        });
+        updateState();
+      } catch (_) { /* draft 復元失敗は致命的でない */ }
+    })();
+  }
 })();
 </script>
 </script>

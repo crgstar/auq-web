@@ -90,6 +90,38 @@ Monitor で polling する必要はない。
 - desc に `</script>` の文字列を含めたい時は **HTML エンティティ**
   (`&lt;/script&gt;`) で書く
 
+#### desc は **素のタグだけ書けば dark theme に馴染む**
+
+`server/index.html` 側に default stylesheet を持たせてあるので、書き手は
+`<table>` `<pre><code>` `<blockquote>` `<ul>` `<h2>` `<svg>` などを
+**素のまま書けばよい**。inline `style` 属性で配色や padding を毎回書く必要は無い。
+
+```html
+<!-- これで OK. 配色や枠線は default で当たる -->
+<h2>判断材料</h2>
+<table>
+  <thead><tr><th>候補</th><th>所要</th></tr></thead>
+  <tbody>
+    <tr><td>Python</td><td>~50 行</td></tr>
+    <tr><td>Bun</td><td>~20 行</td></tr>
+  </tbody>
+</table>
+<blockquote>原則: 呼び出し側に install を強いない</blockquote>
+<p class="warn">⚠ 既存タブを閉じてから再実行してください</p>
+```
+
+サポートしているタグ: `h1`-`h6` / `p` / `strong` / `em` / `small` / `mark` /
+`a` / `ul` / `ol` / `li` / `blockquote` / `hr` / `code` / `pre` / `kbd` /
+`table` / `thead` / `tbody` / `tr` / `th` / `td` / `img` / `figure` / `svg` /
+`figcaption` / `details` / `summary`。
+
+簡易 callout として `<p class="note">` `<p class="warn">` `<p class="danger">`
+`<p class="ok">` が使える (色付きの left-border + 薄い背景)。
+
+inline `style` 属性で上書きしたい時は通常の HTML として動くので、レイアウト
+固有の調整 (列幅 `<col>` / 特定セルの `colspan` など) はそのまま書いて構わない。
+**毎回フルで配色を書かない** が原則。
+
 `kind` は 3 種類:
 
 - `single`: ラジオ。`options[]` で `value`/`label`/`hint?`、`allowOther?`
@@ -97,7 +129,12 @@ Monitor で polling する必要はない。
 - `rank`: ドラッグ並び替え。`items[]` で `id`/`label`/`hint?`
 
 `options[].value` (single/multi) と `items[].id` (rank) は **answer payload に
-出る識別子**。意味のある短い文字列を使うこと。
+そのまま出る識別子**。後で読んだ時に意味が分かるよう、`a` `b` `c` ではなく
+**意味のある short snake_case** (`python` `bun` `server` `template` 等) で書く。
+
+`label` / `hint` は UI に出る本文だが **plain text として扱われる**
+(HTML タグはエスケープして表示される)。リッチに見せたいテキスト整形
+(コードフォント・強調・改行) は desc 側に書くこと。
 
 ### 2. /tmp に書き出す
 
@@ -109,9 +146,12 @@ HTML は **ファイル経由を既定**にする。理由:
 - 大きい本文 (SVG や code-block を含む) でも素直
 
 ```
-Write ツールで /tmp/auq-web-<short_random>.html に HTML を書く
-  例: /tmp/auq-web-q3k7.html
+Write ツールで /tmp/auq-web-current.html に HTML を書く
 ```
+
+固定 path を使う理由: port 7777 が固定で並行起動を許していないので、tmp ファイル
+も並行衝突しない。short random を毎回考えなくていい上、デバッグ時も
+`cat /tmp/auq-web-current.html` で「直近 Claude が組み立てた HTML」を再現できる。
 
 短い (1 質問 + 数行 desc) かつ shell-safe と判断できれば heredoc も可:
 
@@ -124,6 +164,22 @@ AUQ_EOF
 ```
 
 迷ったらファイル経由。
+
+#### 起動前 dry-run (任意, 推奨)
+
+書いた HTML が parse を通るか / 各 question にどんな id・descLen が割り当たるか を
+**サーバを起動せずに** 確認できる:
+
+```bash
+~/.claude/skills/auq-web/run.sh --validate --input /tmp/auq-web-<random>.html
+# OK 例: {"ok": true, "meta": {...}, "questions": [{"id":"q1","kind":"single","descLen":312,"options":["a","b"]}, ...]}
+# NG 例: {"ok": false, "error": "question[q1].options は 2 件以上の array である必要があります"}
+```
+
+exit 0 / 1 で成否が判定できる。`{"ok": true, ...}` の `descLen` が想定外に小さい・
+0 になっていたら desc HTML が意図した question に紐づいていない。複雑な HTML
+(複数質問 + SVG + 大きい比較表) を初めて書く時は **起動前に 1 回 validate して
+から `Bash run_in_background` する** とイテレーションが速い。
 
 ### 3. server を background 起動
 
@@ -154,6 +210,39 @@ Bash ツールを **`run_in_background: true`** で呼ぶ:
 `--no-open` を付ける。`webbrowser.open` が失敗した場合 (リモート ssh セッション等)
 は stderr に「⚠️ ブラウザを自動で開けませんでした。手動で {url} を開いて
 ください。」と出るので、それをユーザに見せて URL をクリックしてもらう。
+
+#### draft auto-save (server 側で動作)
+
+server は `POST /api/draft` を受けて partial answer を保持する仕組みを持つ
+(画面 JS が 800ms debounce で送る)。これにより **タブクラッシュ・誤って閉じる・
+長考からの timeout で入力が消える** 事故を減らせる。
+
+通常運用では呼び出し側で意識する必要は無い (画面 JS が自動で動く)。
+クラッシュ復旧のために draft をファイルに永続化したい時は `--draft-out` を指定:
+
+```bash
+~/.claude/skills/auq-web/run.sh \
+  --port 7777 \
+  --input /tmp/auq-web-current.html \
+  --draft-out /tmp/auq-draft.json   # atomic write される
+```
+
+`POST /answer` (確定回答) を受けた瞬間に draft はクリアされる。
+
+#### スナップショット出力 (`--static <path>`)
+
+server を起動せずに、render 済み HTML を 1 ファイル吐いて exit するモード。
+回答 UI は disabled になる (閲覧専用):
+
+```bash
+~/.claude/skills/auq-web/run.sh \
+  --static /tmp/auq-snapshot.html \
+  --input /tmp/auq-web-current.html
+```
+
+用途: Slack / docbase に「こういう確認画面を出した」と貼る、
+ふりかえりや archive 用に保存する、headless 環境からファイルとして渡す、など。
+通常運用 (回答受け取り) には使わない。
 
 ユーザへの案内 (1 行で良い):
 **「ブラウザで質問画面を開きました。回答後、自動で閉じます」**

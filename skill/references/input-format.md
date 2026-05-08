@@ -42,6 +42,14 @@ SKILL.md の補足。Claude が HTML 本文を組み立てる時の正確な仕�
 5. **meta は常に別 script**。1 質問でも meta 統合の shorthand は無し
 6. metadata script の本文は **純 JSON のみ** (trailing comma / コメント /
    CDATA / HTML エンティティ 不可)
+7. **desc 領域は通常の HTML として解釈される**。`<` `&` を表示したい時は
+   `&lt;` `&amp;` で書く。`</script>` の文字列を中に入れたい時は必ず
+   `&lt;/script&gt;` でエスケープする (素のまま書くと HTML パーサが
+   auq script の終端と区別できず壊れる)
+8. **識別子 (`question.id` / `options[].value` / `items[].id`) は
+   answer payload にそのまま出る**。後で読んだ時に意味が分かるよう、
+   意味のある short snake_case で書く (`a` `b` `c` ではなく
+   `python` `bun` `server` `template` のように)
 
 ## 4. meta オブジェクト
 
@@ -80,9 +88,9 @@ SKILL.md の補足。Claude が HTML 本文を組み立てる時の正確な仕�
 | `kind` | `"single"` \| `"multi"` | ◎ | |
 | `title` | string | ◎ | 見出し |
 | `options` | array | ◎ | 2 件以上 |
-| `options[].value` | string | ◎ | 同一 question 内で重複禁止 |
-| `options[].label` | string | ◎ | |
-| `options[].hint` | string | × | サブテキスト |
+| `options[].value` | string | ◎ | answer に出る識別子。同一 question 内で重複禁止。意味のある short snake_case で |
+| `options[].label` | string | ◎ | UI に出る本文。**plain text として扱われる** (HTML タグはエスケープして表示) |
+| `options[].hint` | string | × | サブテキスト。同上 plain text |
 | `allowOther` | bool | × | Other 行を出す。既定 `false` |
 
 ## 6. question (kind = rank)
@@ -103,9 +111,9 @@ SKILL.md の補足。Claude が HTML 本文を組み立てる時の正確な仕�
 |---|---|---|---|
 | `id`, `kind`, `title` | 同上 | ◎ | |
 | `items` | array | ◎ | 2 件以上 |
-| `items[].id` | string | ◎ | answer の ranking 配列に出る識別子。重複禁止 |
-| `items[].label` | string | ◎ | |
-| `items[].hint` | string | × | |
+| `items[].id` | string | ◎ | answer の ranking 配列に出る識別子。重複禁止。意味のある short snake_case で |
+| `items[].label` | string | ◎ | UI に出る本文。**plain text として扱われる** |
+| `items[].hint` | string | × | サブテキスト。同上 plain text |
 
 ## 7. 入力例
 
