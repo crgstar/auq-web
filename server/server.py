@@ -96,11 +96,13 @@ class Handler(BaseHTTPRequestHandler):
         if self.path not in ("/", "/index.html"):
             self.send_error(404, "Not Found")
             return
-        # watch mode (dev): 編集 → ブラウザリロードで即反映するため毎回 input を
-        # 読み直して再 render. parse 失敗は exit せず人間が読めるエラー画面を 200 で返す
-        if self.server.watch_input_path:
-            content = _render_for_watch(
-                self.server.watch_input_path, self.server.template_str,
+        # reload 経路: GET / の度に input を読み直して再 parse + render する.
+        # 編集 → ブラウザリロードで即反映する hot-reload (--watch) と,
+        # 起動時 parse 失敗からの修正 → リロード復帰 (F7) の両用.
+        # parse 失敗は exit せず人間が読めるエラー画面を 200 で返す
+        if self.server.reload_input_path:
+            content = _render_with_reload(
+                self.server.reload_input_path, self.server.template_str,
             )
         else:
             content = self.rendered_html
@@ -201,13 +203,13 @@ def _read_input(input_path: str | None) -> str:
     return sys.stdin.read()
 
 
-# watch mode のエラー画面.
+# 再 parse 失敗時のエラー画面 (--watch / F7 共通).
 # なぜ 200 で返す: 401/500 だとブラウザ拡張のキャッシュや devtools のフィルタで
 # 「ページ読めない」状態になり、編集→リロードのループが分断されるため.
 # 200 + 中身が「赤いエラー」の方が人間にもループにも優しい.
 # パレットは index.html の dark theme と意図的に揃えている (依存させると
 # index.html 不在時に動かなくなるので、独立 mirror として扱う)
-_WATCH_ERROR_TEMPLATE = """<!doctype html>
+_RELOAD_ERROR_TEMPLATE = """<!doctype html>
 <html lang="ja"><head><meta charset="utf-8">
 <title>auq-web: invalid input</title>
 <style>
@@ -220,23 +222,24 @@ _WATCH_ERROR_TEMPLATE = """<!doctype html>
 </style></head>
 <body>
 <h1>❌ auq-web: input parse failed</h1>
-<div class="label">--watch mode: edit and reload to retry</div>
+<div class="label">edit the input file and reload this page to retry</div>
 <pre>{detail}</pre>
 <div class="hint">source: <code>{path}</code></div>
 </body></html>
 """
 
 
-def _render_for_watch(input_path: str, template: str) -> bytes:
-    """watch mode 専用: input を読み直して render. 失敗時はエラー HTML を返す.
+def _render_with_reload(input_path: str, template: str) -> bytes:
+    """input を読み直して render. 失敗時はエラー HTML を返す.
     template は起動時にキャッシュされたものを受け取る (毎回 disk 読みしないため).
+    GET / 毎に呼ばれる経路なので, parse 失敗を例外にせず HTML として表現する.
     """
     try:
         source = _read_input(input_path)
         payload = parse_input(source)
         return render_template(template, payload).encode("utf-8")
     except (InvalidInput, OSError, ValueError) as e:
-        body = _WATCH_ERROR_TEMPLATE.format(
+        body = _RELOAD_ERROR_TEMPLATE.format(
             detail=html_lib.escape(str(e)),
             path=html_lib.escape(input_path),
         )
@@ -276,7 +279,8 @@ def _load_payload(args: argparse.Namespace) -> tuple[dict | None, int | None]:
 
     - payload, None  : 成功. caller は通常フローへ
     - None, exit_code: 失敗 + exit すべき. 出力は本関数が済ませている
-    - None, None     : watch mode で起動時失敗. caller はサーバを起動して継続
+    - None, None     : 起動時失敗だが server 継続. caller は GET / で再 parse する
+                       (--watch / --input + 非 watch のどちらか)
     """
     try:
         source = _read_input(args.input)
@@ -285,9 +289,16 @@ def _load_payload(args: argparse.Namespace) -> tuple[dict | None, int | None]:
         if args.validate:
             _emit_validate_json({"ok": False, "error": str(e)})
             return None, 1
-        if args.watch:
-            print(f"⚠️ 起動時 input 読込み/parse 失敗 (watch 継続): {e}", file=sys.stderr)
+        # --watch (hot-reload) / --input (F7: 修正→リロード復帰) どちらも
+        # server を上げて GET / で再 parse する経路に乗せる. ループバック可能なので
+        # exit せず警告だけ出して継続. 書き手が --validate 回し忘れた時の救済も兼ねる
+        if args.input:
+            print(
+                f"⚠️ 起動時 input 読込み/parse 失敗 (server 継続, browser に error 画面): {e}",
+                file=sys.stderr,
+            )
             return None, None
+        # stdin 経路は再読込不可能なので exit. CI / pipe 用途の確定エラーでもある
         prefix = "❌ 入力読込み失敗" if isinstance(e, OSError) else "❌ 入力 HTML のバリデーション失敗"
         print(f"{prefix}: {e}", file=sys.stderr)
         return None, 1
@@ -377,7 +388,7 @@ def main() -> int:
         except ValueError as e:
             print(f"❌ テンプレ render 失敗: {e}", file=sys.stderr)
             return 1
-    # else: watch mode で payload 取得失敗. _render_for_watch が GET / 時に再試行する
+    # else: watch mode で payload 取得失敗. _render_with_reload が GET / 時に再試行する
 
     try:
         server = HTTPServer((args.host, args.port), Handler)
@@ -388,8 +399,12 @@ def main() -> int:
         raise
 
     # handler から self.server.<x> でアクセスする instance state.
-    # クラス変数にすると test 間でリークするので instance に閉じ込める
-    server.watch_input_path = args.input if args.watch else None
+    # クラス変数にすると test 間でリークするので instance に閉じ込める.
+    # reload_input_path は GET / で「再読込 + parse 失敗時 200 エラー画面」する経路.
+    # active 条件: --watch (hot-reload UX) または起動時 parse 失敗 (F7: 修正→リロードで復帰).
+    # 後者は payload is None で表現でき, _load_payload の契約上 args.input は必ず真値
+    needs_reload_on_get = args.watch or payload is None
+    server.reload_input_path = args.input if needs_reload_on_get else None
     server.template_str = template
     server.draft_store = DraftStore(args.draft_out)
 

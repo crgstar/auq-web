@@ -201,8 +201,11 @@ Bash ツールを **`run_in_background: true`** で呼ぶ:
 - 起動時に入力 HTML をパース → 検証 → render
 - listen 開始後に `webbrowser.open(url)` を呼んで **ブラウザを自動オープン**
   (macOS: `open`, Linux: `xdg-open`, Windows: `start`)
-- パース失敗時は stderr に詳細を出して exit 1 (= background 完了通知が
-  失敗ステータスで返る)
+- パース失敗時:
+  - **`--input` 指定時**: server は起動して **ブラウザに 200 で赤いエラー画面**
+    を返す。入力ファイルを修正してリロードすれば再 parse される (server 再起動不要)。
+    stderr にも警告が出る。書き手が `--validate` を回し忘れた時の救済になる
+  - **stdin 経由**: stderr に詳細を出して exit 1 (再読込不可能なため確定エラー)
 - POST /answer を 1 度受けたら **JSON 1 行を stdout に書いて exit 0**
 - port 7777 が衝突していたら詳細メッセージを stderr に出して exit 1
 
@@ -303,7 +306,8 @@ port 衝突 等) が出ているので、それをユーザに見せる。
 
 | 症状 | 対処 |
 |---|---|
-| background プロセスが exit 1 で即落ち | stderr (BashOutput) を読む。HTML パースエラーか port 衝突 |
+| ブラウザで「❌ auq-web: input parse failed」の赤い画面 | 入力 HTML の parse 失敗。画面の `<pre>` に詳細あり。/tmp/auq-web-current.html を Edit で修正 → ブラウザでリロードで復帰 (server 再起動不要) |
+| background プロセスが exit 1 で即落ち | stderr (BashOutput) を読む。port 衝突 / index.html 不在 / heredoc(stdin) 経路の parse 失敗 が候補 |
 | port 7777 衝突メッセージ | 前の auq-web タブが残っている可能性大。「画面を閉じてから再実行してください」とユーザに伝える |
 | ブラウザで真っ白 | server stderr に listening log は出ているか確認。出ているなら 200 でレンダー済み (HTML が空 desc で見えにくいだけ) |
 | `event: "reject"` | 続行を勝手に判断せず、ユーザに改めて意図を確認する |
