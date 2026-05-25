@@ -6,7 +6,7 @@ description: >
   ブラウザで開き、選択肢 + 自由コメント + 並べ替えを構造化 JSON で受け取る。
   「choose A / B」のような単純な確認には AskUserQuestion で十分だが、
   本文が 3 行を超える / 比較表が要る / before/after の差分を見せたい /
-  SVG や JS の図を貼りたい / 2-4 件の質問を 1 画面で答えてほしい場面では
+  SVG や JS の図を貼りたい / 複数の質問を 1 画面で答えてほしい場面では
   必ずこちらを優先すること。「表で見せたい」「コード比較で選んでほしい」
   「図で示してから聞きたい」「並び順を決めてほしい」「複数まとめて確認したい」
   といった文脈で AskUserQuestion を選びかけたら、まず auq-web を検討する。
@@ -31,7 +31,7 @@ AskUserQuestion (組み込みツール) は単純な選択肢列挙には素直�
 | before / after のコードブロックを並べたい | **auq-web** |
 | SVG / JS の簡易チャートを描いてから選ばせたい | **auq-web** |
 | 段階的な背景説明 (h2, リスト) で前提を共有 | **auq-web** |
-| 2〜4 件の質問を 1 画面で答えてほしい | **auq-web** |
+| 複数の質問 (件数上限なし) を 1 画面で答えてほしい | **auq-web** |
 | 答え方の優先順位 (rank) を聞きたい | **auq-web** |
 
 迷ったら auq-web。
@@ -85,8 +85,12 @@ Monitor で polling する必要はない。
   `<script>` (`text/javascript` や `application/json`) は **desc にそのまま流れる**
   ので、SVG 描画用の JS や chart-data の埋め込みも自由
 - 1 個目の auq script は省略可能な **meta** (`{ "$auq": "meta", ... }`)
-- 2 個目以降が question (1〜4 件)
+- 2 個目以降が question (1 件以上、上限なし)
 - 各 question script の **直後から次の auq script まで** が `descHtml`
+- **meta と最初の question の間には空白/コメント以外を置けない** (`meta script と
+  最初の question の間の領域 には空白/コメント以外を置けません` で validate 失敗
+  する)。状況説明 HTML を冒頭に出したい場合は **最初の question script を先に置き、
+  その直後に desc を書く** (meta を省略してもよい)
 - desc に `</script>` の文字列を含めたい時は **HTML エンティティ**
   (`&lt;/script&gt;`) で書く
 

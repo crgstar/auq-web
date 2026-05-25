@@ -11,7 +11,6 @@ import unittest
 from parser import (
     AUQ_TYPE,
     InvalidInput,
-    MAX_QUESTIONS,
     parse_input,
     require_only_ws_or_comments,
     validate_meta,
@@ -257,10 +256,12 @@ class StructureValidationTest(unittest.TestCase):
         with self.assertRaises(InvalidInput):
             parse_input(_meta())
 
-    def test_too_many_questions(self):
-        src = _meta() + "".join(_q(f"q{i}") + "<p/>" for i in range(MAX_QUESTIONS + 1))
-        with self.assertRaises(InvalidInput):
-            parse_input(src)
+    def test_many_questions_allowed(self):
+        # 上限撤廃: 8 件でも parse 通る. why: AskUserQuestion 互換の 4 件制約を外し、
+        # Claude 側で必要なだけ並べられるようにした (auq-web の表現力自由化方針と一貫)
+        src = _meta() + "".join(_q(f"q{i}") + "<p/>" for i in range(8))
+        result = parse_input(src)
+        self.assertEqual(len(result["questions"]), 8)
 
     def test_meta_in_second_position(self):
         src = _q("q1") + _meta() + "<p>x</p>"

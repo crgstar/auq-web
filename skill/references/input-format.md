@@ -8,7 +8,7 @@ SKILL.md の補足。Claude が HTML 本文を組み立てる時の正確な仕�
 中に `<script type="application/auq+json">` の JSON ブロックを混ぜる。
 
 - 1 個目 (任意): `{ "$auq": "meta", ... }` — 全体メタデータ
-- 2 個目以降 (1〜4 件): question — 質問定義
+- 2 個目以降 (1 件以上、上限なし): question — 質問定義
 - 各 question script の **直後 〜 次の auq script (or EOF) まで** が `descHtml`
 
 ```
@@ -36,7 +36,7 @@ SKILL.md の補足。Claude が HTML 本文を組み立てる時の正確な仕�
 1. **トップレベル** の `<script type="application/auq+json">` のみ metadata 扱い。
    `<svg>` 内など入れ子の同 type は desc としてそのまま流れる
 2. 1 個目に `{ "$auq": "meta", ... }` と書けば全体 meta
-3. それ以降のトップレベル auq script は **新しい question** (1〜4 件)
+3. それ以降のトップレベル auq script は **新しい question** (1 件以上、上限なし)
 4. 入力先頭〜最初の auq script の間 / meta と最初の question の間は
    **空白 / 改行 / BOM / HTML コメント のみ許容**。それ以外は 400
 5. **meta は常に別 script**。1 質問でも meta 統合の shorthand は無し

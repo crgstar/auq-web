@@ -33,7 +33,6 @@ _ID_RE = re.compile(r"^[a-zA-Z0-9_]+$")
 
 ALLOWED_KINDS = frozenset({"single", "multi", "rank"})
 
-MAX_QUESTIONS = 4
 DEFAULT_TIMEOUT_SEC = 300
 
 
@@ -326,11 +325,6 @@ def parse_input(source: str) -> dict:
             parsed["questions"][-1]["descHtml"] = source[prev_q_end:m.start]
 
         validate_question(m.data, seen_question_ids)
-        if len(parsed["questions"]) >= MAX_QUESTIONS:
-            raise InvalidInput(
-                f"question は最大 {MAX_QUESTIONS} 件です "
-                "(AskUserQuestion 互換)"
-            )
         # m.data を直接保存すると元 dict を汚染するので shallow copy する
         parsed["questions"].append(dict(m.data))
         prev_q_end = m.end
