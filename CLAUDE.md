@@ -39,8 +39,13 @@ auq-web/
 │   ├── index.html     # __AUQ_DATA__ sentinel + 動的 render する SPA
 │   ├── samples/       # 仕様 §4 の入力例 fixture
 │   └── test_*.py      # parser / wire / samples の unittest
-└── skill/             # (未着手) SKILL.md と Claude が呼ぶエントリスクリプト
+└── skill/run.sh        # auq-web コマンドの実体 (server.py 起動 wrapper)
 ```
+
+`skill/SKILL.md` と `references/` は dotfiles (crgstar/dotfiles) 側で他スキルと同じく
+管理し、setup.sh が `~/.claude/skills/auq-web/` へ link する。`run.sh` は server に
+sibling 依存するためこのリポに残し、`~/.local/bin/auq-web` として PATH に通す
+(SKILL.md からは `auq-web ...` で呼ぶ)。
 
 仕様の詳細 (入力フォーマット §3, パーサ実装 §5, wire format §6) は
 `.local/input-format.md` に置いてある (作業中なので gitignore 配下)。

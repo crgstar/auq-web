@@ -1,15 +1,20 @@
 #!/usr/bin/env bash
-# auq-web Skill のエントリ。SKILL.md からはこの run.sh を呼ぶ。
+# auq-web Skill のエントリ。SKILL.md (dotfiles 管理) は PATH 上の `auq-web` 経由でこれを呼ぶ。
 #
 # why wrapper: SKILL.md に server.py の絶対パスを書くと repo を移動した時に
 # symlink 経由でも参照が壊れる。SCRIPT_DIR 解決を 1 箇所に閉じ込める。
 #
-# why pwd -P: ~/.claude/skills/auq-web/run.sh から呼ばれる時, BASH_SOURCE 自体は
-# symlink ではなく親ディレクトリ (auq-web) が symlink。`pwd -P` で物理パスに
-# 解決すると、本体側の /Users/kumazaki/projects/auq-web/skill が得られる。
+# why realpath: このスクリプトは ~/.local/bin/auq-web という *ファイル symlink*
+# 越しに PATH 経由で呼ばれる。BASH_SOURCE はその symlink のパスを指すので、
+# dirname → pwd -P だけだと ~/.local/bin に着地して ../server を見失う
+# (pwd -P はディレクトリ symlink は解くが、ファイル symlink は辿らない)。
+# realpath で symlink を実体 (auq-web リポの skill/run.sh) まで解決してから
+# dirname する。python3 を使うのは、結局 server.py を python3 で起動する＝
+# python3 の存在が保証済みで、readlink -f の BSD/GNU 差を避けられるため。
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+SOURCE="$(python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "$SOURCE")" && pwd -P)"
 SERVER_PY="$SCRIPT_DIR/../server/server.py"
 
 if [ ! -f "$SERVER_PY" ]; then
